@@ -2,43 +2,93 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow-sm mb-4">
-            <div class="card-body">
-                <form method="POST">
+    <div class="col-md-9">
+        <div class="card shadow-sm mb-4 border-0">
+            <div class="card-body p-4">
+                <h4 class="mb-4 text-center">Tko sve gleda? Unesite omiljene filmove:</h4>
+                <form method="POST" id="movie-form">
                     {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label font-weight-bold">Unesite filmove koje grupa voli (odvojite zarezom):</label>
-                        <input type="text" name="movies" class="form-control form-control-lg" placeholder="npr. Inception, Up, Toy Story" value="{{ user_movies|default:'' }}">
+                    <div id="movie-inputs">
+                        <div class="input-group mb-3 shadow-sm">
+                            <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                            <input list="movies-list" name="movie_titles[]" class="form-control border-start-0 py-2" placeholder="Počni tipkati naziv filma (npr. Toy Story)..." required>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-lg w-100">Generiraj preporuke</button>
+                    
+                    <div class="d-flex gap-2 mb-4">
+                        <button type="button" class="btn btn-outline-secondary w-50" onclick="addInput()">
+                            <i class="bi bi-plus-circle"></i> Dodaj još jedan film
+                        </button>
+                        <button type="submit" class="btn btn-primary w-50">
+                            <i class="bi bi-magic"></i> Generiraj preporuku
+                        </button>
+                    </div>
+
+                    <!-- Skrivena lista za Autocomplete -->
+                    <datalist id="movies-list">
+                        {% for title in all_movie_titles %}
+                            <option value="{{ title }}">
+                        {% endfor %}
+                    </datalist>
                 </form>
             </div>
         </div>
 
         {% if user_movies %}
-        <div class="alert alert-info">
-            <strong>Vaš odabir:</strong> {{ user_movies }}
+        <div class="alert alert-light border shadow-sm mb-4">
+            <span class="text-muted">Analizirani filmovi grupe:</span> 
+            <span class="fw-bold text-dark">{{ user_movies }}</span>
         </div>
         {% endif %}
 
         {% if recommendations %}
-        <h3 class="mb-3">Preporuke za vašu grupu:</h3>
-        <div class="list-group shadow-sm">
+        <h3 class="mb-4 text-center">Preporuke za vašu grupu:</h3>
+        <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for movie in recommendations %}
-            <div class="list-group-item list-group-item-action">
-                <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1 text-primary">{{ movie.title }}</h5>
+            <div class="col">
+                <div class="card h-100 shadow-sm border-0 transition-hover">
+                    <!-- Placeholder slika s naslovom dok ne ubacimo TMDB -->
+                        <img src="{{ movie.poster_url|default:'https://via.placeholder.com/500x750?text=No+Poster' }}" 
+                            class="card-img-top" 
+                            alt="{{ movie.title }}"
+                            style="aspect-ratio: 2/3; object-fit: cover;">                    <div class="card-body">
+                        <h6 class="card-title fw-bold">{{ movie.title }}</h6>
+                        <p class="card-text">
+                            <span class="badge bg-light text-dark border">{{ movie.genres }}</span>
+                        </p>
+                    </div>
                 </div>
-                <p class="mb-1 text-muted"><small>Žanrovi: {{ movie.genres }}</small></p>
             </div>
             {% endfor %}
         </div>
         {% else %}
             {% if user_movies %}
-            <div class="alert alert-warning">Nažalost, nismo pronašli slične filmove. Pokušajte s drugim naslovima.</div>
+            <div class="alert alert-warning text-center shadow-sm">
+                Nažalost, nismo pronašli slične filmove. Pokušajte unijeti točne naslove iz izbornika.
+            </div>
             {% endif %}
         {% endif %}
     </div>
 </div>
+
+<!-- Skripta za dinamičko dodavanje polja -->
+<script>
+function addInput() {
+    const container = document.getElementById('movie-inputs');
+    const newInput = document.createElement('div');
+    newInput.className = 'input-group mb-3 shadow-sm bounce-in';
+    newInput.innerHTML = `
+        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+        <input list="movies-list" name="movie_titles[]" class="form-control border-start-0 py-2" placeholder="Počni tipkati naziv filma...">
+        <button class="btn btn-outline-danger border-start-0" type="button" onclick="this.parentElement.remove()">✕</button>
+    `;
+    container.appendChild(newInput);
+}
+</script>
+
+<style>
+    .transition-hover:hover { transform: translateY(-5px); transition: 0.3s; }
+    .bounce-in { animation: fadeIn 0.5s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 {% endblock %}
