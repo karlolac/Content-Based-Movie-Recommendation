@@ -1,15 +1,16 @@
 import re
 import requests
 import urllib3
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from .models import UserMovie
 from recommendation_system import prepare_data, get_recommendations_from_list
 
-
+# Priprema podataka iz sustava preporuka
 metadata, cosine_sim, indices = prepare_data()
 
+# Isključivanje upozorenja za SSL certifikate pri pozivu TMDB API-ja
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_poster_url(movie_title):
@@ -54,25 +55,21 @@ def get_poster_url(movie_title):
     
     return "https://via.placeholder.com/500x750?text=No+Poster"
 
-# @login_required <-- Ostavi zakomentirano dok ne napraviš login rute
+
 def home(request):
     recommendations = None
     user_movies_display = None
     all_movie_titles = sorted(metadata['title'].unique().tolist())
     
-  # Ako si prijavljen u /adminu, request.user će biti tvoj 'admin' račun
+    # Određivanje trenutnog korisnika (prijavljen ili gost koji glumi admina)
     if request.user.is_authenticated:
         current_user = request.user
     else:
-        # Ako pristupaš stranici anonimno, umjesto kreiranja novog profila, 
-        # sustav će jednostavno dohvatiti tvoj ručno kreirani 'admin' profil iz baze
         current_user = User.objects.filter(username='admin').first()
-        
-        # Ako iz nekog razloga nema admina, uzmi bilo kojeg prvog dostupnog korisnika
         if not current_user:
             current_user = User.objects.first()
 
-    # 2. DOHVAĆANJE PODATAKA - Sada koristimo 'current_user' umjesto 'request.user'
+    # Dohvaćanje popisa svih ostalih korisnika i filmova trenutnog korisnika
     other_users = User.objects.exclude(id=current_user.id)
     my_movies = UserMovie.objects.filter(user=current_user).values_list('movie_title', flat=True)
 
@@ -85,21 +82,31 @@ def home(request):
                 UserMovie.objects.get_or_create(user=current_user, movie_title=selected_movie)
             return redirect('home')
 
-        # SLUČAJ B: Generiranje grupne preporuke
+        # SLUČAJ B: Generiranje grupne preporuke (AŽURIRANO)
         elif 'generate_group' in request.POST:
             friend_id = request.POST.get('friend_id')
             
+            my_movies_list = list(my_movies)
             combined_movie_list = list(my_movies)
             
             if friend_id:
                 friend = User.objects.get(id=friend_id)
                 friend_movies = UserMovie.objects.filter(user=friend).values_list('movie_title', flat=True)
+                friend_movies_list = list(friend_movies)
                 
-                combined_movie_list.extend(list(friend_movies))
-                user_movies_display = f"Moji filmovi + {friend.username}"
+                # Spajanje filmova za algoritam
+                combined_movie_list.extend(friend_movies_list)
+                
+                # Formatiranje za plavu traku: točni nazivi filmova
+                moje_str = ", ".join(my_movies_list) if my_movies_list else "Nemate dodanih filmova"
+                prijatelj_str = ", ".join(friend_movies_list) if friend_movies_list else "Nema dodanih filmova"
+                
+                user_movies_display = f"Moji filmovi [{moje_str}] + {friend.username} filmovi [{prijatelj_str}]"
             else:
-                user_movies_display = "Samo moji filmovi (Individualni prikaz)"
+                moje_str = ", ".join(my_movies_list) if my_movies_list else "Nemate dodanih filmova"
+                user_movies_display = f"Samo moji filmovi (Individualni prikaz) -> [{moje_str}]"
 
+            # Uklanjanje duplikata
             combined_movie_list = list(set(combined_movie_list))
             
             if combined_movie_list:
@@ -118,26 +125,36 @@ def home(request):
         'my_movies': my_movies
     })
 
-def user_profile(request):
+
+def user_profile(request, username=None):
     all_movie_titles = sorted(metadata['title'].unique().tolist())
     
-    # Određivanje trenutnog korisnika (isto kao u home view-u)
-    if request.user.is_authenticated:
-        current_user = request.user
+    # 1. Određivanje kojeg korisnika prikazujemo
+    if username:
+        current_user = get_object_or_404(User, username=username)
     else:
-        current_user = User.objects.filter(username='admin').first() or User.objects.first()
+        if request.user.is_authenticated:
+            current_user = request.user
+        else:
+            current_user = User.objects.filter(username='admin').first() or User.objects.first()
         
     if not current_user:
         return redirect('home')
         
-    # Ako korisnik želi obrisati film s profila
+    # 2. Logika za brisanje filma s profila
     if request.method == 'POST' and 'delete_movie' in request.POST:
         movie_to_delete = request.POST.get('movie_title')
         UserMovie.objects.filter(user=current_user, movie_title=movie_to_delete).delete()
+        
+        if username:
+            return redirect('user_profile_by_name', username=username)
         return redirect('user_profile')
         
-    # Dohvati sve spremljene filmove za tog korisnika
-    my_movies = UserMovie.objects.filter(user=current_user).order_by('-created_at')
+    # 3. Dohvaćanje filmova korisnika za prikaz na profilu
+    try:
+        my_movies = UserMovie.objects.filter(user=current_user).order_by('-created_at')
+    except Exception:
+        my_movies = UserMovie.objects.filter(user=current_user)
     
     return render(request, 'recommender_app/profile.html', {
         'current_user': current_user,

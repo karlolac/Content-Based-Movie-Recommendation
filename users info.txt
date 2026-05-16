@@ -1,0 +1,6 @@
+super user-> korisničko ime: admin 
+             lozinka: admin
+user-> korisničko ime: karlolackovic
+       lozinka: Vscode2026!
+user-> korisničko ime: user
+       lozinka: Novikorisnik1!
