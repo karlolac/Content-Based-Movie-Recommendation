@@ -1,0 +1,35 @@
+{% extends 'recommender_app/base.html' %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 800px;">
+    <div class="card shadow-lg p-4">
+        <h2 class="text-center text-primary mb-4">Korisnički Profil: {{ current_user.username }}</h2>
+        
+        <div class="alert alert-info text-center">
+            Ovdje možete upravljati svojim popisom filmova koji se koriste za generiranje zajedničkih preporuka.
+        </div>
+
+        <h4 class="mt-4">Moji trenutno spremljeni filmovi:</h4>
+        {% if my_movies %}
+            <ul class="list-group mb-4">
+                {% for movie in my_movies %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><strong>{{ movie.movie_title }}</strong></span>
+                        <form method="POST" style="margin: 0;">
+                            {% csrf_token %}
+                            <input type="hidden" name="movie_title" value="{{ movie.movie_title }}">
+                            <button type="submit" name="delete_movie" class="btn btn-danger btn-sm">Ukloni</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted">Nemate spremljenih filmova. Dodajte ih na početnoj stranici!</p>
+        {% endif %}
+
+        <div class="text-center mt-3">
+            <a href="{% url 'home' %}" class="btn btn-secondary">Natrag na sustav preporuka</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

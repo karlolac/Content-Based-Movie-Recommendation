@@ -12,12 +12,17 @@
     </style>
 </head>
 <body>
-
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'user_profile' %}" class="btn btn-outline-primary">
+        👦 Moj Profil ({% if request.user.is_authenticated %}{{ request.user.username }}{% else %}admin{% endif %})
+    </a>
+</div>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container">
         <a class="navbar-brand" href="#">MovieRec System</a>
     </div>
 </nav>
+
 
 <div class="hero-section text-center">
     <div class="container">
