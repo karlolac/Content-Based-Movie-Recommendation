@@ -61,7 +61,6 @@ def home(request):
     user_movies_display = None
     all_movie_titles = sorted(metadata['title'].unique().tolist())
     
-    # Određivanje trenutnog korisnika (prijavljen ili gost koji glumi admina)
     if request.user.is_authenticated:
         current_user = request.user
     else:
@@ -69,44 +68,61 @@ def home(request):
         if not current_user:
             current_user = User.objects.first()
 
-    # Dohvaćanje popisa svih ostalih korisnika i filmova trenutnog korisnika
     other_users = User.objects.exclude(id=current_user.id)
     my_movies = UserMovie.objects.filter(user=current_user).values_list('movie_title', flat=True)
 
     if request.method == 'POST':
         
-        # SLUČAJ A: Dodavanje filma na profil
+        # Slučaj A: Dodavanje filma na profil
         if 'add_my_movie' in request.POST:
             selected_movie = request.POST.get('movie_title')
             if selected_movie in all_movie_titles:
                 UserMovie.objects.get_or_create(user=current_user, movie_title=selected_movie)
             return redirect('home')
 
-        # SLUČAJ B: Generiranje grupne preporuke (AŽURIRANO)
+        # NOVO: Slučaj A.2: Brisanje filma izravno s početne stranice
+        elif 'delete_my_movie' in request.POST:
+            movie_to_delete = request.POST.get('movie_title')
+            UserMovie.objects.filter(user=current_user, movie_title=movie_to_delete).delete()
+            return redirect('home')
+
+        # Slučaj B: Generiranje grupne preporuke (sa upadljivim stilovima)
         elif 'generate_group' in request.POST:
-            friend_id = request.POST.get('friend_id')
+            friend_ids = request.POST.getlist('friend_ids')
             
             my_movies_list = list(my_movies)
             combined_movie_list = list(my_movies)
             
-            if friend_id:
-                friend = User.objects.get(id=friend_id)
-                friend_movies = UserMovie.objects.filter(user=friend).values_list('movie_title', flat=True)
-                friend_movies_list = list(friend_movies)
+            moje_str = ", ".join(my_movies_list) if my_movies_list else "Nemate dodanih filmova"
+            
+            if friend_ids:
+                friends = User.objects.filter(id__in=friend_ids)
                 
-                # Spajanje filmova za algoritam
-                combined_movie_list.extend(friend_movies_list)
+                display_parts = [
+                    f"<strong class='text-dark fs-6'>Moji filmovi:</strong> "
+                    f"<span class='badge bg-white text-primary border border-primary shadow-sm px-2 py-1.5 ms-1'>{moje_str}</span>"
+                ]
                 
-                # Formatiranje za plavu traku: točni nazivi filmova
-                moje_str = ", ".join(my_movies_list) if my_movies_list else "Nemate dodanih filmova"
-                prijatelj_str = ", ".join(friend_movies_list) if friend_movies_list else "Nema dodanih filmova"
+                for friend in friends:
+                    friend_movies = UserMovie.objects.filter(user=friend).values_list('movie_title', flat=True)
+                    friend_movies_list = list(friend_movies)
+                    
+                    combined_movie_list.extend(friend_movies_list)
+                    
+                    prijatelj_str = ", ".join(friend_movies_list) if friend_movies_list else "Nema dodanih filmova"
+                    
+                    display_parts.append(
+                        f"<strong class='text-dark fs-6'>{friend.username}:</strong> "
+                        f"<span class='badge bg-white text-success border border-success shadow-sm px-2 py-1.5 ms-1'>{prijatelj_str}</span>"
+                    )
                 
-                user_movies_display = f"Moji filmovi [{moje_str}] + {friend.username} filmovi [{prijatelj_str}]"
+                user_movies_display = "<div class='d-block my-2'></div>".join(display_parts)
             else:
-                moje_str = ", ".join(my_movies_list) if my_movies_list else "Nemate dodanih filmova"
-                user_movies_display = f"Samo moji filmovi (Individualni prikaz) -> [{moje_str}]"
+                user_movies_display = (
+                    f"<strong class='text-dark fs-6'>Samo moji filmovi:</strong> "
+                    f"<span class='badge bg-white text-primary border border-primary shadow-sm px-2 py-1.5 ms-1'>{moje_str}</span>"
+                )
 
-            # Uklanjanje duplikata
             combined_movie_list = list(set(combined_movie_list))
             
             if combined_movie_list:
@@ -129,7 +145,6 @@ def home(request):
 def user_profile(request, username=None):
     all_movie_titles = sorted(metadata['title'].unique().tolist())
     
-    # 1. Određivanje kojeg korisnika prikazujemo
     if username:
         current_user = get_object_or_404(User, username=username)
     else:
@@ -141,7 +156,6 @@ def user_profile(request, username=None):
     if not current_user:
         return redirect('home')
         
-    # 2. Logika za brisanje filma s profila
     if request.method == 'POST' and 'delete_movie' in request.POST:
         movie_to_delete = request.POST.get('movie_title')
         UserMovie.objects.filter(user=current_user, movie_title=movie_to_delete).delete()
@@ -150,7 +164,6 @@ def user_profile(request, username=None):
             return redirect('user_profile_by_name', username=username)
         return redirect('user_profile')
         
-    # 3. Dohvaćanje filmova korisnika za prikaz na profilu
     try:
         my_movies = UserMovie.objects.filter(user=current_user).order_by('-created_at')
     except Exception:

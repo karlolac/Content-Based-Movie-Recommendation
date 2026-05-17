@@ -4,3 +4,5 @@ user-> korisničko ime: karlolackovic
        lozinka: Vscode2026!
 user-> korisničko ime: user
        lozinka: Novikorisnik1!
+user-> korisničko ime: korisnik
+       lozinka: Gitbash1312!

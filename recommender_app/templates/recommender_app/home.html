@@ -2,7 +2,6 @@
 
 {% block content %}
 
-
 <div class="row justify-content-center">
     <div class="col-md-11">
         <div class="card shadow-sm mb-4 border-0">
@@ -29,7 +28,14 @@
                         <h6 class="small fw-bold text-secondary mt-3 mb-2">Tvoji trenutno spremljeni filmovi:</h6>
                         <div class="p-2 border rounded bg-light" style="max-height: 140px; overflow-y: auto;">
                             {% for m in my_movies %}
-                                <span class="badge bg-secondary p-2 mb-1 me-1 d-inline-block shadow-sm">{{ m }}</span>
+                                <div class="badge bg-secondary p-2 mb-1 me-1 d-inline-flex align-items-center shadow-sm">
+                                    <span class="me-2">{{ m }}</span>
+                                    <form method="POST" action="" class="d-inline m-0 p-0">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="movie_title" value="{{ m }}">
+                                        <button type="submit" name="delete_my_movie" class="btn-close btn-close-white" style="font-size: 0.65rem;" aria-label="Obriši"></button>
+                                    </form>
+                                </div>
                             {% empty %}
                                 <p class="text-muted small my-1 ps-1"><i class="bi bi-info-circle"></i> Niste još dodali nijedan film na svoj profil.</p>
                             {% endfor %}
@@ -45,14 +51,21 @@
                             <form method="POST">
                                 {% csrf_token %}
                                 <div class="mb-3">
-                                    <select name="friend_id" class="form-select border py-2 shadow-sm" required>
-                                        <option value="" disabled selected>-- Odaberi drugog korisnika s FERIT-a --</option>
+                                    <label class="form-label small text-secondary fw-bold mb-2">Možeš označiti više korisnika za grupu:</label>
+                                    <div class="p-3 border rounded bg-white shadow-sm" style="max-height: 140px; overflow-y: auto;">
                                         {% for u in other_users %}
-                                            <option value="{{ u.id }}">{{ u.username }}</option>
+                                            <div class="form-check mb-2">
+                                                <input class="form-check-input" type="checkbox" name="friend_ids" value="{{ u.id }}" id="user_{{ u.id }}">
+                                                <label class="form-check-label text-dark small" for="user_{{ u.id }}">
+                                                    {{ u.username }}
+                                                </label>
+                                            </div>
+                                        {% empty %}
+                                            <p class="text-muted small my-1"><i class="bi bi-info-circle"></i> Nema dostupnih drugih korisnika.</p>
                                         {% endfor %}
-                                    </select>
-                                    <div class="form-text small text-muted mt-1">
-                                        Sustav će automatski spojiti tvoje spremljene filmove s filmovima odabranog korisnika.
+                                    </div>
+                                    <div class="form-text small text-muted mt-2">
+                                        Sustav će automatski spojiti tvoje spremljene filmove s filmovima svih označenih korisnika.
                                     </div>
                                 </div>
                         </div>
@@ -68,10 +81,18 @@
         </div>
 
         {% if user_movies %}
-        <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center">
-            <i class="bi bi-info-circle-fill me-2 fs-5"></i>
-            <div>
-                Sustav trenutno analizira: <span class="fw-bold text-dark">{{ user_movies }}</span>
+        <div class="alert alert-info border-0 shadow-sm mb-4 p-4">
+            <div class="d-flex align-items-start">
+                <i class="bi bi-cpu-fill text-info fs-4 me-3 mt-1 animated-pulse"></i>
+                <div class="w-100">
+                    <h5 class="alert-heading fs-6 fw-bold text-dark mb-3 d-flex align-items-center">
+                        Sustav trenutno analizira zajedničke interese i profile
+                    </h5>
+                    
+                    <div class="lh-lg small">
+                        {{ user_movies|safe }}
+                    </div>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -123,6 +144,14 @@
     .transition-hover:hover { 
         transform: translateY(-5px); 
         box-shadow: 0.5rem 1rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+    }
+    .animated-pulse {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
     }
 </style>
 {% endblock %}
