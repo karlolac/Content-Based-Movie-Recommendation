@@ -7,10 +7,8 @@ from django.contrib.auth.decorators import login_required
 from .models import UserMovie
 from recommendation_system import prepare_data, get_recommendations_from_list
 
-# Priprema podataka iz sustava preporuka
 metadata, cosine_sim, indices = prepare_data()
 
-# Isključivanje upozorenja za SSL certifikate pri pozivu TMDB API-ja
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_poster_url(movie_title):
@@ -73,20 +71,17 @@ def home(request):
 
     if request.method == 'POST':
         
-        # Slučaj A: Dodavanje filma na profil
         if 'add_my_movie' in request.POST:
             selected_movie = request.POST.get('movie_title')
             if selected_movie in all_movie_titles:
                 UserMovie.objects.get_or_create(user=current_user, movie_title=selected_movie)
             return redirect('home')
 
-        # NOVO: Slučaj A.2: Brisanje filma izravno s početne stranice
         elif 'delete_my_movie' in request.POST:
             movie_to_delete = request.POST.get('movie_title')
             UserMovie.objects.filter(user=current_user, movie_title=movie_to_delete).delete()
             return redirect('home')
 
-        # Slučaj B: Generiranje grupne preporuke (sa upadljivim stilovima)
         elif 'generate_group' in request.POST:
             friend_ids = request.POST.getlist('friend_ids')
             
