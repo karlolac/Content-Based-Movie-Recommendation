@@ -141,9 +141,9 @@ def home(request):
                     total_genres_count = len(all_genres)
                     counts = Counter(all_genres)
                     # Uzimamo top 3 najdominantnija žanra u grupi
-                    top_3 = counts.most_common(3)
+                    top_5 = counts.most_common(5)
                     
-                    for genre, count in top_3:
+                    for genre, count in top_5:
                         percentage = round((count / total_genres_count) * 100)
                         group_genres_stats.append({
                             'genre': genre,

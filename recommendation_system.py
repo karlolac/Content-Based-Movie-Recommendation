@@ -79,7 +79,8 @@ def get_recommendations_from_list(movie_list, metadata, cosine_sim, indices):
         if title_at_idx not in found_titles:
             final_recommendation_indices.append(i[0])
         
-        if len(final_recommendation_indices) == 10: 
+        # PROMIJENJENO: Ovdje je granica podignuta s 10 na 15 filmova
+        if len(final_recommendation_indices) == 15: 
             break
 
     return metadata[['title', 'genres']].iloc[final_recommendation_indices]
