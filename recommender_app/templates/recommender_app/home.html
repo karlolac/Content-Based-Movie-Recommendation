@@ -82,17 +82,51 @@
 
         {% if user_movies %}
         <div class="alert alert-info border-0 shadow-sm mb-4 p-4">
-            <div class="d-flex align-items-start">
-                <i class="bi bi-cpu-fill text-info fs-4 me-3 mt-1 animated-pulse"></i>
-                <div class="w-100">
-                    <h5 class="alert-heading fs-6 fw-bold text-dark mb-3 d-flex align-items-center">
-                        Sustav trenutno analizira zajedničke interese i profile
-                    </h5>
-                    
-                    <div class="lh-lg small">
-                        {{ user_movies|safe }}
+            <div class="d-flex align-items-start flex-column flex-md-row">
+                <div class="d-flex align-items-start mb-3 mb-md-0 me-md-3">
+                    <i class="bi bi-cpu-fill text-info fs-4 me-3 mt-1 animated-pulse"></i>
+                    <div>
+                        <h5 class="alert-heading fs-6 fw-bold text-dark mb-3">
+                            Sustav trenutno analizira zajedničke interese i profile
+                        </h5>
+                        <div class="lh-lg small">
+                            {{ user_movies|safe }}
+                        </div>
                     </div>
                 </div>
+                
+                {% if group_genres_stats %}
+                <div class="ms-md-auto mt-2 mt-md-0 w-100 w-md-auto text-md-end" style="min-width: 280px;">
+                    <button class="btn btn-outline-info btn-sm fw-bold text-dark w-100 w-md-auto mb-2 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#collapseStats" aria-expanded="false" aria-controls="collapseStats">
+                        <i class="bi bi-bar-chart-line-fill me-1 text-primary"></i> Prikaži analizu žanrova grupe
+                    </button>
+                    
+                    <div class="collapse text-start bg-white p-3 border rounded shadow-sm mt-2" id="collapseStats">
+                        <h6 class="small fw-bold text-secondary mb-3"><i class="bi bi-pie-chart text-success me-1"></i> Dominantni žanrovi grupe:</h6>
+                        
+                        {% for stat in group_genres_stats %}
+                            <div class="mb-2">
+                                <div class="d-flex justify-content-between small fw-bold text-dark mb-1">
+                                    <span>{{ stat.genre }}</span>
+                                    <span>{{ stat.percentage }}%</span>
+                                </div>
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar {% if forloop.counter == 1 %}bg-primary{% elif forloop.counter == 2 %}bg-success{% else %}bg-warning{% endif %} rounded" 
+                                         role="progressbar" 
+                                         style="width: {{ stat.percentage }}%;" 
+                                         aria-valuenow="{{ stat.percentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                        <div class="form-text text-muted mt-2" style="font-size: 0.7rem; line-height: 1.2;">
+                            *Izračunato dinamički iz profila svih označenih korisnika u ovoj grupi.
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}

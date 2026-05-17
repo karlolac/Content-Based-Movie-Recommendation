@@ -1,14 +1,17 @@
 import re
 import requests
 import urllib3
+from collections import Counter  # Potrebno za brojanje žanrova grupe
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from .models import UserMovie
 from recommendation_system import prepare_data, get_recommendations_from_list
 
+# Priprema podataka iz sustava preporuka
 metadata, cosine_sim, indices = prepare_data()
 
+# Isključivanje upozorenja za SSL certifikate pri pozivu TMDB API-ja
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 def get_poster_url(movie_title):
@@ -57,6 +60,7 @@ def get_poster_url(movie_title):
 def home(request):
     recommendations = None
     user_movies_display = None
+    group_genres_stats = []  # Ovdje spremamo top žanrove za prikaz na frontendu
     all_movie_titles = sorted(metadata['title'].unique().tolist())
     
     if request.user.is_authenticated:
@@ -71,17 +75,20 @@ def home(request):
 
     if request.method == 'POST':
         
+        # Slučaj 1: Dodavanje filma na osobni profil
         if 'add_my_movie' in request.POST:
             selected_movie = request.POST.get('movie_title')
             if selected_movie in all_movie_titles:
                 UserMovie.objects.get_or_create(user=current_user, movie_title=selected_movie)
             return redirect('home')
 
+        # Slučaj 2: Brisanje filma izravno s početne stranice (Brzi X gumb)
         elif 'delete_my_movie' in request.POST:
             movie_to_delete = request.POST.get('movie_title')
             UserMovie.objects.filter(user=current_user, movie_title=movie_to_delete).delete()
             return redirect('home')
 
+        # Slučaj 3: Generiranje grupne preporuke + računanje WOW statistike
         elif 'generate_group' in request.POST:
             friend_ids = request.POST.getlist('friend_ids')
             
@@ -118,6 +125,34 @@ def home(request):
                     f"<span class='badge bg-white text-primary border border-primary shadow-sm px-2 py-1.5 ms-1'>{moje_str}</span>"
                 )
 
+            # === STATISTIKA ŽANROVA GRUPE (WOW efekt) ===
+            if combined_movie_list:
+                all_genres = []
+                # Pronađi sve retke u bazi filmova koji pripadaju spojenoj listi grupe
+                group_metadata = metadata[metadata['title'].isin(combined_movie_list)]
+                
+                for genres_str in group_metadata['genres'].dropna():
+                    # Dijelimo žanrove. Ako su u bazi odvojeni razmakom, koristimo .split()
+                    # Ako su odvojeni zarezom i razmakom, koristi: [g.strip() for g in genres_str.split(',')]
+                    genres_list = genres_str.split()  
+                    all_genres.extend(genres_list)
+                
+                if all_genres:
+                    total_genres_count = len(all_genres)
+                    counts = Counter(all_genres)
+                    # Uzimamo top 3 najdominantnija žanra u grupi
+                    top_3 = counts.most_common(3)
+                    
+                    for genre, count in top_3:
+                        percentage = round((count / total_genres_count) * 100)
+                        group_genres_stats.append({
+                            'genre': genre,
+                            'percentage': percentage,
+                            'count': count
+                        })
+            # ============================================
+
+            # Uklanjanje duplikata iz konačne liste za algoritam preporuke
             combined_movie_list = list(set(combined_movie_list))
             
             if combined_movie_list:
@@ -133,7 +168,8 @@ def home(request):
         'user_movies': user_movies_display,
         'all_movie_titles': all_movie_titles,
         'other_users': other_users,
-        'my_movies': my_movies
+        'my_movies': my_movies,
+        'group_genres_stats': group_genres_stats  # Prosljeđivanje izračunatih postotaka žanrova
     })
 
 
